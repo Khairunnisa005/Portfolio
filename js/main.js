@@ -74,14 +74,16 @@
     var $videoSrc;
     $('.btn-play').click(function () {
         $videoSrc = $(this).data("src");
+        if ($videoSrc) {
+            $('#videoModal').on('shown.bs.modal', function () {
+                $("#video").attr('src', $videoSrc + "?autoplay=1&modestbranding=1&showinfo=0");
+            });
+            
+            $('#videoModal').on('hide.bs.modal', function () {
+                $("#video").attr('src', '');
+            });
+        }
     });
-    console.log($videoSrc);
-    $('#videoModal').on('shown.bs.modal', function (e) {
-        $("#video").attr('src', $videoSrc + "?autoplay=1&amp;modestbranding=1&amp;showinfo=0");
-    })
-    $('#videoModal').on('hide.bs.modal', function (e) {
-        $("#video").attr('src', $videoSrc);
-    })
 
 
     // Facts counter
@@ -100,37 +102,21 @@
 
 
     // Portfolio isotope and filter
-    $(document).ready(function() {
-        // Initialize Isotope with proper settings
+    $(window).on('load', function() {
         var $grid = $('.portfolio-container').isotope({
             itemSelector: '.portfolio-item',
             layoutMode: 'fitRows',
             fitRows: {
-                gutter: 5
-            },
-            percentPosition: false,
-            horizontalOrder: true
+                gutter: 20
+            }
         });
-
-        // Make sure all items are visible initially
-        $('.portfolio-item').show();
 
         // Filter items on button click
         $('#portfolio-flters li').on('click', function() {
             var filterValue = $(this).attr('data-filter');
-            
-            // Update active class
             $('#portfolio-flters li').removeClass('active');
             $(this).addClass('active');
-            
-            // Filter items
-            $grid.isotope({ 
-                filter: filterValue,
-                layoutMode: 'fitRows',
-                fitRows: {
-                    gutter: 5
-                }
-            });
+            $grid.isotope({ filter: filterValue });
         });
 
         // Layout Isotope after each image loads
@@ -139,17 +125,6 @@
         });
     });
 
-
-    // Testimonials carousel
-    $(".testimonial-carousel").owlCarousel({
-        autoplay: true,
-        smartSpeed: 1000,
-        items: 1,
-        dots: true,
-        loop: true,
-    });
-
-    
 })(jQuery);
 
 // Wait for the DOM to be fully loaded
@@ -159,46 +134,6 @@ document.addEventListener('DOMContentLoaded', function() {
     progressBars.forEach(bar => {
         const value = bar.getAttribute('aria-valuenow');
         bar.style.width = value + '%';
-    });
-
-    // Portfolio filtering
-    const portfolioFilters = document.querySelectorAll('#portfolio-flters li');
-    const portfolioItems = document.querySelectorAll('.portfolio-item');
-    
-    // Function to arrange items in rows of 3
-    const arrangeItems = (items) => {
-        const container = document.querySelector('.portfolio-container');
-        const rows = Math.ceil(items.length / 3);
-        
-        // Reset container
-        container.style.gridTemplateRows = `repeat(${rows}, 220px)`;
-        
-        // Show/hide items
-        portfolioItems.forEach(item => item.style.display = 'none');
-        items.forEach(item => item.style.display = 'block');
-    };
-
-    // Initial arrangement
-    arrangeItems(Array.from(portfolioItems));
-
-    // Filter click handler
-    portfolioFilters.forEach(filter => {
-        filter.addEventListener('click', function(e) {
-            e.preventDefault();
-            
-            // Remove active class
-            portfolioFilters.forEach(f => f.classList.remove('active'));
-            this.classList.add('active');
-            
-            // Filter items
-            const filterValue = this.getAttribute('data-filter');
-            const filteredItems = filterValue === '*' 
-                ? Array.from(portfolioItems)
-                : Array.from(portfolioItems).filter(item => item.classList.contains(filterValue));
-            
-            // Arrange filtered items
-            arrangeItems(filteredItems);
-        });
     });
 
     // Smooth scrolling for navigation
@@ -262,18 +197,72 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Portfolio isotope initialization
-    let $grid = $('.portfolio-container').isotope({
-        itemSelector: '.portfolio-item',
-        layoutMode: 'fitRows',
-        fitRows: {
-            gutter: 8
+    // Audio Player Control
+    const musicToggle = document.getElementById('musicToggle');
+    const bgMusic = document.getElementById('bgMusic');
+
+    if (musicToggle && bgMusic) {
+        // Set initial volume and display
+        bgMusic.volume = 0.3;
+        musicToggle.style.display = 'block';
+        
+        // Function to play music
+        async function playMusic() {
+            try {
+                await bgMusic.play();
+                musicToggle.classList.add('playing');
+                musicToggle.innerHTML = '<i class="fas fa-volume-up"></i>';
+            } catch (error) {
+                console.error("Playback failed:", error);
+                // Try playing again after user interaction
+                musicToggle.addEventListener('click', function playOnClick() {
+                    bgMusic.play().then(() => {
+                        musicToggle.classList.add('playing');
+                        musicToggle.innerHTML = '<i class="fas fa-volume-up"></i>';
+                        musicToggle.removeEventListener('click', playOnClick);
+                    }).catch(e => console.error("Playback failed again:", e));
+                }, { once: true });
+            }
         }
+
+        // Function to pause music
+        function pauseMusic() {
+            bgMusic.pause();
+            musicToggle.classList.remove('playing');
+            musicToggle.innerHTML = '<i class="fas fa-music"></i>';
+        }
+
+        // Event listener for music toggle button
+        musicToggle.addEventListener('click', function() {
+            if (bgMusic.paused) {
+                playMusic();
+            } else {
+                pauseMusic();
+            }
+        });
+
+        // Handle audio errors
+        bgMusic.addEventListener('error', function(e) {
+            console.error('Audio error:', e);
+            alert('Error loading music file. Please check if the file exists and try again.');
+        });
+    }
+
+    // Lightbox configuration
+    $(document).ready(function() {
+        lightbox.option({
+            'resizeDuration': 200,
+            'wrapAround': true,
+            'disableScrolling': true,
+            'fadeDuration': 300,
+            'imageFadeDuration': 300,
+            'alwaysShowNavOnTouchDevices': true
+        });
     });
 
-    // Layout Isotope after each image loads
-    $grid.imagesLoaded().progress(function() {
-        $grid.isotope('layout');
+    // Update portfolio item links for Lightbox
+    $('.portfolio-btn a[data-lightbox]').each(function() {
+        $(this).attr('data-title', $(this).closest('.portfolio-img').find('h5').text());
     });
 });
 
@@ -300,27 +289,4 @@ $.fn.isInViewport = function() {
     let viewportBottom = viewportTop + $(window).height();
     return elementBottom > viewportTop && elementTop < viewportBottom;
 };
-
-// Lightbox
-lightbox.option({
-    'resizeDuration': 200,
-    'wrapAround': true,
-    'disableScrolling': true
-});
-
-// Audio Player Control
-const musicToggle = document.getElementById('musicToggle');
-const bgMusic = document.getElementById('bgMusic');
-
-musicToggle.addEventListener('click', () => {
-    if (bgMusic.paused) {
-        bgMusic.play();
-        musicToggle.classList.add('playing');
-        musicToggle.innerHTML = '<i class="fas fa-volume-up"></i>';
-    } else {
-        bgMusic.pause();
-        musicToggle.classList.remove('playing');
-        musicToggle.innerHTML = '<i class="fas fa-music"></i>';
-    }
-});
 
